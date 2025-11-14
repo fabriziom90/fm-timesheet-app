@@ -57,6 +57,15 @@ function formatDate(dateStr) {
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
 }
+
+function formatHours(decimal) {
+    if (!decimal) return "0.00";
+
+    const hours = Math.floor(decimal); // parte intera
+    const minutes = Math.round((decimal - hours) * 60); // parte in minuti
+
+    return `${hours}.${minutes.toString().padStart(2, "0")}`;
+}
 </script>
 <template>
     <AuthenticatedLayout>
@@ -113,7 +122,7 @@ function formatDate(dateStr) {
                         <td>{{ formatDate(e.date) }}</td>
                         <td>{{ e.start_time }}</td>
                         <td>{{ e.end_time }}</td>
-                        <td>{{ e.duration_hours }}</td>
+                        <td>{{ formatHours(e.duration_hours) }}</td>
                         <td>
                             <button
                                 class="btn btn-danger btn-sm"
