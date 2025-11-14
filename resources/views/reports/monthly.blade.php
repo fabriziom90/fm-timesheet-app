@@ -1,47 +1,54 @@
 <!DOCTYPE html>
-<html lang="it">
+<html>
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <title>Report mensile</title>
     <style>
         body {
-            font-family: DejaVu Sans, sans-serif;
+            font-family: sans-serif;
             font-size: 12px;
-        }
-
-        h1,
-        h2,
-        h3 {
-            margin: 0 0 10px 0;
-            padding: 0;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-bottom: 20px;
         }
 
-        table th,
-        table td {
-            border: 1px solid #444;
+        th,
+        td {
+            border: 1px solid #000;
             padding: 6px;
-            text-align: left;
         }
 
-        .total {
-            margin-top: 20px;
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
             font-size: 14px;
             font-weight: bold;
+            margin-top: 25px;
+        }
+
+        img {
+            max-width: 250px;
+            margin-top: 10px;
         }
     </style>
 </head>
 
 <body>
 
-    <h2>Report mensile ore lavorate</h2>
-    <p><strong>Utente:</strong> {{ $user->name }}</p>
-    <p><strong>Mese:</strong> {{ str_pad($month, 2, '0', STR_PAD_LEFT) }}/{{ $year }}</p>
+    <div class="title">
+        Report mensile - {{ $month }}/{{ $year }}
+    </div>
+
+    {{-- ORE LAVORATE --}}
+    <div class="section-title">Ore lavorate</div>
 
     <table>
         <thead>
@@ -50,7 +57,6 @@
                 <th>Inizio</th>
                 <th>Fine</th>
                 <th>Ore</th>
-                <th>Note</th>
             </tr>
         </thead>
         <tbody>
@@ -59,14 +65,48 @@
                     <td>{{ \Carbon\Carbon::parse($e->date)->format('d/m/Y') }}</td>
                     <td>{{ $e->start_time }}</td>
                     <td>{{ $e->end_time }}</td>
-                    <td>{{ number_format($e->duration_hours, 2) }}</td>
-                    <td>{{ $e->notes }}</td>
+                    <td>{{ number_format($e->duration_formatted, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    <p class="total">Totale ore nel mese: {{ number_format($totalHours, 2) }}</p>
+    <p><strong>Totale ore:</strong> {{ number_format($totalHours, 2) }}</p>
+    <p><strong>Importo ore ({{ $hourlyRate }}€/h):</strong> {{ $totalHoursAmount }} €</p>
+
+    {{-- RICEVUTE --}}
+    <div class="section-title">Ricevute</div>
+    @if (count($receipts) > 0)
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Importo</th>
+                    <th>Immagine</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                @foreach ($receipts as $r)
+                    <tr>
+                        <td>{{ \Carbon\Carbon::parse($r->date)->format('d/m/Y') }}</td>
+                        <td>{{ number_format($r->amount, 2) }} €</td>
+                        <td>
+                            <img src="{{ public_path('storage/' . $r->image_path) }}">
+                        </td>
+                    </tr>
+                @endforeach
+
+            </tbody>
+        </table>
+
+        <p><strong>Totale ricevute:</strong> {{ $totalReceiptsAmount }} €</p>
+
+        <hr>
+    @else
+        <h2>Nessuna ricevuta caricata questo mese</h2>
+    @endif
+    <h3>TOTALE COMPLESSIVO: {{ $grandTotal }} €</h3>
 
 </body>
 

@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\TimeEntryController;
+use App\Http\Controllers\ReceiptController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +42,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/times/{timeEntry}', [TimeEntryController::class,'destroy'])->name('times.destroy');
     Route::get('/report/monthly', [TimeEntryController::class, 'exportMonthlyPdf'])
     ->name('report.monthly');
+    Route::post('/receipts', [ReceiptController::class, 'store'])->name('receipts.store');
+    Route::get('/receipts/{receipt}', [ReceiptController::class, 'show'])
+    ->name('receipts.show');
+    
 });
 
 require __DIR__.'/auth.php';

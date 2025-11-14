@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TimeEntry;
+use App\Models\Receipt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -20,8 +21,9 @@ class TimeEntryController extends Controller
     {
         $entries = TimeEntry::where('user_id', Auth::id())->orderBy('date','ASC')
             ->get();
+            $receipts = Receipt::where('user_id', Auth::id())->orderBy('date', 'ASC')->get();
         
-        return Inertia::render('Times/Index', ['entries' => $entries]);
+        return Inertia::render('Times/Index', ['entries' => $entries, 'receipts' => $receipts]);
     }
 
     /**
@@ -110,26 +112,62 @@ class TimeEntryController extends Controller
 
     public function exportMonthlyPdf(Request $request)
     {   
-        $year = $request->year;
-        $month = $request->month;
-        
+        $year  = (int) trim($request->input('year'));
+        $month = (int) ltrim(trim($request->input('month')), '0');
 
+        if (!$year) $year = now()->year;
+        if (!$month) $month = now()->month;
+
+        // Ore lavorate
         $entries = TimeEntry::where('user_id', Auth::id())
-            ->whereRaw('YEAR(`date`) = ?', [$year])
-            ->whereRaw('MONTH(`date`) = ?', [$month])
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
             ->orderBy('date')
             ->get();
-        
+
+        $entriesFormatted = $entries->map(function($e) {
+            $e->duration_formatted = $this->formatHours($e->duration_hours);
+            return $e;
+        });
+
         $totalHours = $entries->sum('duration_hours');
+        $totalHoursFormatted = $this->formatHours($totalHours);
+        // dd($totalHoursFormatted);
+        $hourlyRate = 28;
 
-        $pdf = Pdf::loadView('reports.monthly', [
-            'entries'    => $entries,
-            'month'      => str_pad($month, 2, '0', STR_PAD_LEFT), // → 01 invece di 1
-            'year'       => $year,
-            'totalHours' => $totalHours,
-            'user'       => Auth::user(),
-        ])->setPaper('a4', 'portrait');
+        $totalHoursAmount = $totalHours * $hourlyRate;
 
-        return $pdf->stream("report_{$year}_{$month}.pdf");
+        // Ricevute
+        $receipts = Receipt::where('user_id', Auth::id())
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->orderBy('date')
+            ->get();
+
+        $totalReceiptsAmount = $receipts->sum('amount');
+
+        $grandTotal = $totalHoursAmount + $totalReceiptsAmount;
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.monthly', [
+            'entries' => $entriesFormatted,
+            'receipts' => $receipts,
+            'month' => str_pad($month, 2, '0', STR_PAD_LEFT),
+            'year' => $year,
+            'totalHours' => $totalHoursFormatted,
+            'totalHoursAmount' => number_format($totalHoursAmount, 2),
+            'totalReceiptsAmount' => number_format($totalReceiptsAmount, 2),
+            'grandTotal' => number_format($grandTotal, 2),
+            'hourlyRate' => $hourlyRate,
+            'user' => Auth::user(),
+        ]);
+
+        return $pdf->stream("report_{$year}_".str_pad($month,2,'0',STR_PAD_LEFT).".pdf");
+    }
+
+    private function formatHours($decimalHours)
+    {
+        $hours = floor($decimalHours);
+        $minutes = round(($decimalHours - $hours) * 60);
+        return sprintf("%d.%02d", $hours, $minutes);
     }
 }
